@@ -5,39 +5,44 @@ const {
   createOrder,
   updateOrder,
   deleteOrder,
-  getMyOrders, // thêm vào đây
+  getMyOrders,
+  getRevenueStats,
 } = require("../controllers/orderController");
-const Order = require("../models/Order");
 
-const auth = require("../middleware/auth");
-
-const { authMiddleware } = require("../controllers/auth.controller");
+const auth = require("../middleware/auth"); // middleware kiểm tra token và gán req.user
 
 const router = express.Router();
 
-router.get("/my-orders", authMiddleware, async (req, res) => {
-  try {
-    const orders = await Order.find({ user: req.user.id })
-      .populate("items.product", "name price");
-    res.json(orders);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+/**
+ * =========================
+ * Routes cho khách hàng (customer)
+ * =========================
+ */
+// Lấy đơn hàng của user đang đăng nhập
+router.get("/my-orders", auth, getMyOrders);
 
-// Route cho customer (đặt trước)
-// router.get("/my-orders", authMiddleware(["customer"]), getMyOrders);
+// Tạo đơn hàng (customer)
+router.post("/", auth, createOrder);
 
-// Routes cho admin/staff
-router.get("/", getOrders);
-router.get("/:id", getOrderById);
-router.post("/", auth, createOrder); 
-// router.post("/", createOrder);
-router.put("/:id", updateOrder);
-router.delete("/:id", deleteOrder);
+/**
+ * =========================
+ * Routes cho admin / staff
+ * =========================
+ */
+// Lấy tất cả đơn hàng
+router.get("/", auth, getOrders);
 
-// Route cho customer
-router.get("/my-orders", authMiddleware(["customer"]), getMyOrders);
-router.post("/", authMiddleware(["customer"]), createOrder);
+// Lấy đơn hàng theo id
+router.get("/:id", auth, getOrderById);
+
+// Cập nhật đơn hàng
+router.put("/:id", auth, updateOrder);
+
+// Xóa đơn hàng
+router.delete("/:id", auth, deleteOrder);
+
+// Lấy thống kê doanh thu
+router.get("/stats/revenue", auth, getRevenueStats);
+
 
 module.exports = router;

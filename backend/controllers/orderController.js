@@ -1,5 +1,6 @@
 const Order = require("../models/Order");
 const Inventory = require("../models/Inventory");
+// const Order = require("../models/Order");
 
 // Lấy danh sách đơn hàng
 exports.getOrders = async (req, res) => {
@@ -92,17 +93,48 @@ exports.deleteOrder = async (req, res) => {
 // controllers/orderController.js
 exports.getMyOrders = async (req, res) => {
   try {
-    console.log(">>> getMyOrders - user:", req.user); // check có user chưa
-
+    console.log(">>> req.user:", req.user);
     const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
     console.log(">>> orders found:", orders.length);
-
     res.json(orders);
   } catch (err) {
-    console.error(">>> getMyOrders error:", err.message);
+    console.error(">>> getMyOrders error:", err);
     res.status(500).json({ error: "Lỗi server khi lấy đơn hàng" });
   }
 };
+
+// Lấy thống kê doanh thu theo ngày
+exports.getRevenueStats = async (req, res) => {
+  try {
+    const { from, to } = req.query; // frontend gửi ?from=2025-09-01&to=2025-09-16
+
+    const match = {};
+    if (from && to) {
+      match.createdAt = {
+        $gte: new Date(from),
+        $lte: new Date(new Date(to).setHours(23, 59, 59, 999)), // hết ngày "to"
+      };
+    }
+
+    const stats = await Order.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          totalRevenue: { $sum: "$totalAmount" },
+          totalOrders: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    res.json(stats);
+  } catch (err) {
+    console.error(">>> getRevenueStats error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 
 
 // module.exports = { getMyOrders };
